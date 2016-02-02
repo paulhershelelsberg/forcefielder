@@ -1,10 +1,7 @@
 <h2><b>Force Fielder</b></h2>
 <h5>Please visit <a href="http://paulhershelelsberg.com/Works/starwars.html">the documentation </a> for more details..
 <h5><i>Videography By <a href="http://www.charleselmer.com/">Charles Elmer</a></i></h5>
-<iframe width="400" height="225" style="display: block;
-    margin-left: auto;
-    margin-right: auto;" src="https://player.vimeo.com/video/153821773" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe> 
-            
+<video width="400" height="225" style="display: block;margin-left: auto;margin-right: auto;" src="starwars.mp4" type="video/mp4"></video>          
  <h3><b>Intro</b></h3>
 <img class="w3-image centerImg" style="max-width:100%;display: block;
     margin-left: auto;
