@@ -1,0 +1,276 @@
+<!DOCTYPE>
+<!--
+    Particle - Read an Analog Value
+    @author: Harrison Jones (harrison@particle.io)
+    @date: Oct 27, 2015
+    @description: A short demo showing how to login, grab an access token, and read from your devices over the net. All without having to embed your access token in the HTML file. Yay security!
+
+
+    Modifications By Paul Elsberg for Particle Alliance Contest
+-->
+<html>
+<head>
+    <title>Force Fielder Display</title>
+    <!--Include Libraries-->
+    <script src="http://cdn.jsdelivr.net/sparkjs/0.5.9/spark.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.4.21/p5.js"></script>
+</head>
+<body>
+        
+        <!-- view 0 - The ERROR screen/view -->
+        <div id="view0" style="display: none">
+            <h2>Error</h2>
+            <div id="view0Text"></div>
+        </div>
+
+        <!-- view 1 - The login screen/view -->
+        <div id="view1" style="display: none">
+            <h2>Login</h2>
+            <div id="view1Text"></div>
+            <div id="spark-login"></div>
+        </div>
+
+        <!-- view 2 - show the force fields -->
+        <div id="view2" style="display: none">
+            <div id="force"></div>
+
+        </div>
+        
+         <!-- Bottom Nav Bar -->
+    <center>
+    <hr />
+    <a onclick="logout()" href="#">Logout / Login as a Different User</a> || <a onclick="mainLogic()" href="#">Home</a>
+    </center>
+  
+
+    <script>
+    //event data and boolean
+    var contact = false;
+    var splitData;
+  
+    // Allow the user to log out
+    function logout()
+    {
+        // Log out the current user by removing the access token from local storage
+        localStorage.removeItem("access_token");
+        mainLogic();
+    }
+    // Show a specific view
+    function showView(viewNum, extraText)
+    {
+        // Hide all views (start with a clean slate)
+        document.getElementById("view0").style.display = "none";
+        document.getElementById("view1").style.display = "none";
+        document.getElementById("view2").style.display = "none";
+        switch (viewNum)
+        {
+            // Show login screen
+            case 1:
+                document.getElementById("view1").style.display = "block";
+                if(extraText)
+                    document.getElementById("view1Text").innerHTML = extraText;
+            break;
+            // Show control screen
+            case 2:
+                document.getElementById("view2").style.display = "block";
+                if(extraText)
+                    document.getElementById("view2Text").innerHTML = extraText;
+            break;
+            // Show the error view
+            default:
+                document.getElementById("view0").style.display = "block";
+                if(extraText)
+                    document.getElementById("view0Text").innerHTML = extraText;
+        }
+    }
+ // Main view logic. If the user doesn't have an access token display the login button otherwise display the contol view
+    function mainLogic()
+    {
+        // Main Logic
+        // view 0 - Does this browser support local storage (we need it!)
+        if(typeof(Storage) == "undefined")
+        {
+            // No, it does not support local storage. Show the error screen
+            showView(0,"Your browser doesn't support local storage. This feature is needed for this website!");
+        } 
+        else 
+        {
+            // view 1 - Do we need to login?
+            // First check to see if we have an access token stored in local storage
+            if(localStorage.getItem("access_token") == null)
+            {
+                // We DO NOT have an access token stored in local storage. Show the login button
+                showView(1);
+            }
+            else
+            {
+                // We DO have an access token stored in local storage. Determine if it's still valid (check the expires time)
+                console.log("expires_at", localStorage.getItem("expires_at"));
+                console.log("current_timestamp", Math.round(new Date().getTime()/1000.0));
+                if(localStorage.getItem("expires_at") > Math.round(new Date().getTime()/1000.0))
+                {
+                    startEventReader();
+                    // The access token should still be valid. Show the next view
+                    showView(2);
+                }
+                else
+                {
+                    // The access token is no longer valid. Show the login button
+                    if(localStorage.getItem("expires_at") == null)
+                        showView(1);
+                    else
+                        showView(1,"Your access token has expired");
+                }
+            }
+        }
+    }
+    mainLogic();
+    // Handle the login button
+    sparkLogin(function(data) {
+        // Successful login. Save the data to local storage
+        for(var k in data) localStorage.setItem(k,data[k]);
+        // Calculate when the access token expires and save that too
+        localStorage.setItem("expires_at",  Math.round(new Date().getTime()/1000.0) + data.expires_in);
+        mainLogic();
+    });
+
+
+
+
+
+function startEventReader()
+    {
+        // First login 
+        spark.login({accessToken: localStorage.getItem("access_token")}, function(err) {
+            if(err)
+            {
+                // There was an error. Go ahead and display the error to the user
+                showView(0, "Unable to login. The error was '" + err + "'");
+            }
+            else
+            {
+            //Save the imu data from the contact event generated by the light saber
+            spark.onEvent('contact', function(data) {
+              contact=true;
+              //split the data values into  a splitData array
+              splitData = data['data'].split(" ");
+              //show each value from the split data
+              var i;
+              for(i=0;i<splitData.length;i++)
+              {
+                console.log("data index : " + i + " value : " + splitData[i]);
+              }
+            });
+          }
+        
+    });
+  }
+/*** This code is written by  Martin Schneider in 2009 and Modified by Paul Elsberg in 2016**//
+//initiate a p5 instance
+var forceFielder = new p5( function( s ) {
+//create a variety of particle field and imu related variables
+  var n, maxage, rdodge, opacity, speed, zoom , crayons, soft, dodge,roll,pitch,heading,stop,runCount; 
+  var a;
+  var age;
+  var w, h, sz, t, c;
+
+  s.setup = function() {
+    //create a canvas half the size of your computer screen
+    s.createCanvas(screen.width/2, screen.height/2);
+    //1000 particles
+    n = 1000;
+    //life of particles
+    maxage = 30;
+    //impacts curvature
+    rdodge = 40;
+    //transparency
+    opacity = 40;
+    speed = .5;
+    zoom = .01;
+    w = s.width/2;
+    h = s.height/2;
+    stop = false;
+    crayons = soft = dodge = true;
+    t=0;
+    //create a multi dimensional array in js
+    a = new Array(n);
+    for (var i = 0; i < n; i++) {
+      a[i] = new Array(2);
+    }
+    age =[n];
+    //change color mode and wipe screen before new drawing 
+    s.colorMode(s.HSB, 150, 2, 1);
+    s.smooth();
+    s.reset();
+  };
+
+  s.draw = function(){
+    //if event published refresh imu data 
+    if(contact){
+      roll = ((parseFloat(splitData[9])+180)/360)*s.width;
+      pitch = ((parseFloat(splitData[10])+90)/180)*s.height;
+      heading = (parseFloat(splitData[11])/2);
+      t= heading;
+      console.log(" updated roll : " + roll + " pitch : " + pitch + " heading : " + heading);
+      contact = false;
+    }
+    //create particles
+    var np = n / maxage;
+    for(var i=0; i<np & c<n; i++, c++) s.newp(c);
+    // draw particle traces
+    for(var i=0; i<c; i++) {
+      age[i]++;
+      var p = a[i];
+      if (age[i] > maxage) s.newp(i);
+      else {
+        var f;
+        f = s.flop(p[0], p[1]); 
+        // opacity based on speed (soft mode) or age (hard mode)
+        var m = maxage/2;
+        var o = soft ? s.mag(f[0], f[1]) * 2 * opacity : (m - abs(m - age[i])) * opacity/m;
+        // hue based on direction
+        var h =  (s.atan2(f[0], f[1])+s.PI) * s.random(50);  
+        s.stroke(h, crayons ? 1 : 0, crayons ? 1 : 0, o);
+        // draw line while updating position
+        s.line(p[0], p[1], p[0] += sz*f[0],  p[1] += sz*f[1]);
+      }
+    }
+  };
+
+
+  s.flop = function flop(x, y) {
+    return [s.noise(t,x * zoom, y * zoom)-.5,s.noise(t+1, x * zoom, y * zoom) - .5];
+  } 
+
+
+  s.newp = function newp(p) {
+    if(dodge) {
+      // particle inside a circle around the imu position
+      var r = s.random(rdodge) 
+      var ang = s.random(s.TWO_PI);
+      var innerA = [pitch + r * s.cos(ang), heading + r *s.sin(ang) ]    
+      a[p][0] = innerA[0];
+      a[p][1] = innerA[1];
+    } 
+    else { 
+      // particle anywhere on screen
+      a[p] = [ s.random(s.width), s.random(s.height) ];
+    }
+    age[p] = 0;
+  }
+
+  //clear the screen
+  s.reset = function reset() {
+    if(crayons){
+      s.background(0)
+    }
+    else{
+      s.background(0,0,100);
+    }
+    
+    sz = speed / zoom;
+    c = 0;
+  }
+
+},'force');
+</script>
